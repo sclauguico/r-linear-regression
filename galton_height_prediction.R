@@ -60,11 +60,14 @@ par(mfrow = c(2,2))
 plot(m0) 
 
 # INTERPRETATION
+# Residuals vs Fitted: the residuals appear to be randomly scattered around a horizontal line at zero, which is a good sign.
+# This suggests that the model meets the assumptions of homoscedasticity (constant variance) and independence of errors.
+
 # Normal Q-Q: In a normal Q-Q plot, if the data follows a normal distribution, 
 # the points will fall close to a straight diagonal line. If the data deviates from normality, 
 # the points will fall away from the line.
 
-# The points deviate from the straight diagonal line, which suggests that the data is not normally distributed. 
+# Scale-Location: The points deviate from the straight diagonal line, which suggests that the data is not normally distributed. 
 # Specifically, the points in the tails are farther away from the line, which suggests that the data may have 
 # heavier tails than a normal distribution. This means that there are more extreme values in the data than would 
 # be expected in a normal distribution.
@@ -74,7 +77,7 @@ plot(m0)
 # There is also some curvature in the red line, which could indicate a non-normal distribution of errors.
 # Overall: The scale-location plot in the image suggests that the linear regression model might not meet the assumptions of homoscedasticity and normality of errors. 
 
-# There are no data points far from the center on the x-axis, so leverage doesn't seem to be a major concern. 
+# Residual vs Leverage: There are no data points far from the center on the x-axis, so leverage doesn't seem to be a major concern. 
 # However, it's difficult to say definitively without the actual data or Cook's distance values.
 
 ##### MODEL TRAINING ----
@@ -148,6 +151,7 @@ ggplot(df_test, aes(x = pred, y = childHeight)) +
 
 # Cross-Validation Evaluation ----
 # Using 5-fold Cross-Validation
+set.seed(143)
 cv_results <- train(childHeight ~ midparentHeight, data = df_height, method = "lm", trControl = trainControl(method = "cv", number = 5))
 cv_rmse <- cv_results$results$RMSE
 cv_rsq <- cv_results$results$Rsquared
@@ -184,7 +188,8 @@ cat("R-squared (CV):", mean(cv_rsq), "\n")
 
 
 
-#### Visualize the linear regression model
+##### VISUALIZE THE MODEL ----
+
 par(mfrow = c(2,2))
 plot(height_model)
 
@@ -209,7 +214,15 @@ library(performance)
 performance::check_model(height_model)
 
 # INTERPRETATION:
+# 1. it looks like the model-predicted data (green line) matches the observed data (blue line) reasonably well 
+# at the center of the plot. However, the tails of the distribution of the simulated data (density plot) 
+# appear to be thicker than the tails of the observed data. This suggests that the model may not be capturing 
+# the extreme values (very short or very tall children) as well as it captures the heights of children in the 
+# middle of the range.
 
+# 2. the residuals appear to be patterned. There is a curve in the scatter plot, which suggests that the
+# residuals are not independent of the fitted values. 
+# This could indicate that the model's assumption of linearity is not met.
 
 
 #### Other models ----
@@ -258,6 +271,7 @@ ggplot(df_test, aes(x = pred, y = childHeight)) +
 
 # Cross-Validation Evaluation ----
 # Using 5-fold Cross-Validation
+set.seed(143)
 cv_results <- train(childHeight ~ midparentHeight, data = df_height, method = "lm", trControl = trainControl(method = "cv", number = 5))
 cv_rmse <- cv_results$results$RMSE
 cv_rsq <- cv_results$results$Rsquared
@@ -278,157 +292,25 @@ cat("R-squared (CV):", mean(cv_rsq), "\n")
 # it could be a sign of overfitting, and further steps such as regularization or 
 # simplifying the model may be necessary to improve generalization performance.
 
-
-
-##### IMPROVING THE MODELS
-# Option 1: Transform childHeight (logarithmic)
-df_height_transformed <- df_height
-df_height_transformed$childHeight_log <- log(df_height_transformed$childHeight)
-
-df_train_transformed <- df_height_transformed[train_indeces, ]
-df_test_transformed <- df_height_transformed[-train_indeces, ]
-
-# Train model on transformed data
-height_model_transformed <- lm(childHeight_log ~ midparentHeight, data = df_train_transformed)
-
-# Evaluate model using Holdout Validation ----
-df_train_transformed$pred <- predict(height_model_transformed, newdata = df_train_transformed)
-df_test_transformed$pred <- predict(height_model_transformed, newdata = df_test_transformed)
-
-
-# Load packages for regression evaluation
-# install.packages("caret")
-library(caret)
-
-# Evaluation metrics
-rmse_train <- RMSE(df_train_transformed$pred, df_train_transformed$childHeight)
-rmse_test <- RMSE(df_test_transformed$pred, df_test_transformed$childHeight)
-rsq_train <- cor(df_train_transformed$pred, df_train_transformed$childHeight)^2
-rsq_test <- cor(df_test_transformed$pred, df_test_transformed$childHeight)^2
-
-# Plot the predictions (on the x-axis) against the outcome (childHeight) on the test data
-# Visualize predictions vs. actuals
-ggplot(df_test_transformed, aes(x = pred, y = childHeight)) + 
-  geom_point() + 
-  geom_abline() +
-  labs(title = "Predicted vs Actual Child Height (Test Set)")
+##### VISUALIZE THE MODEL ----
+par(mfrow = c(2,2))
+plot(height_model)
 
 # INTERPRETATION:
+# 1. the residuals appear to be scattered somewhat randomly around the zero line, but there might be a slight curve. 
+# This suggests that the model might not be perfect, but it could be a reasonable fit for the data.
 
-# Cross-Validation Evaluation ----
-# Using 5-fold Cross-Validation
-cv_results <- train(childHeight ~ midparentHeight, data = df_height_transformed, method = "lm", trControl = trainControl(method = "cv", number = 5))
-cv_rmse <- cv_results$results$RMSE
-cv_rsq <- cv_results$results$Rsquared
+# 2. the points deviate from the line somewhat, which suggests that the errors may not be perfectly normal.
 
-# Summary
-cat("Holdout Validation:\n")
-cat("RMSE (Train):", rmse_train, "\n")
-cat("RMSE (Test):", rmse_test, "\n")
-cat("R-squared (Train):", rsq_train, "\n")
-cat("R-squared (Test):", rsq_test, "\n\n")
+# 3. There doesn't seem to be a clear pattern between the residuals and the leverage scores, suggesting that there aren't 
+# any outliers with high leverage that are exerting undue influence on the model.
 
-cat("Cross-Validation:\n")
-cat("RMSE (CV):", mean(cv_rmse), "\n")
-cat("R-squared (CV):", mean(cv_rsq), "\n")
+# 4. There doesn't seem to be a clear pattern between the residuals and the leverage scores, suggesting that
+# there aren't any outliers with high leverage that are exerting undue influence on the model.
 
+library(performance)
 
-
-
-
-
-# Evaluate and compare with original model
-
-# Option 2: Weighted least squares
-# install.packages("car")
-library(car)
-weights <- 1 / (df_train$childHeight^2)  # Example weighting scheme (adjust as needed)
-height_model_transformed_weighted <- lm(childHeight ~ midparentHeight, data = df_train, weights = weights)
-
-# Evaluate and compare with original model
-
-# Evaluate model using Holdout Validation ----
-df_train$pred <- predict(height_model_transformed_weighted, newdata = df_train)
-df_test$pred <- predict(height_model_transformed_weighted, newdata = df_test)
-
-
-# Load packages for regression evaluation
-# install.packages("caret")
-library(caret)
-
-# Evaluation metrics
-rmse_train <- RMSE(df_train$pred, df_train$childHeight)
-rmse_test <- RMSE(df_test$pred, df_test$childHeight)
-rsq_train <- cor(df_train$pred, df_train$childHeight)^2
-rsq_test <- cor(df_test$pred, df_test$childHeight)^2
-
-# Plot the predictions (on the x-axis) against the outcome (childHeight) on the test data
-# Visualize predictions vs. actuals
-ggplot(df_test, aes(x = pred, y = childHeight)) + 
-  geom_point() + 
-  geom_abline() +
-  labs(title = "Predicted vs Actual Child Height (Test Set)")
+# Performance package:
+performance::check_model(height_model)
 
 # INTERPRETATION:
-
-# Cross-Validation Evaluation ----
-# Using 5-fold Cross-Validation
-cv_results <- train(childHeight ~ midparentHeight, data = df_height, method = "lm", trControl = trainControl(method = "cv", number = 5))
-cv_rmse <- cv_results$results$RMSE
-cv_rsq <- cv_results$results$Rsquared
-
-# Summary
-cat("Holdout Validation:\n")
-cat("RMSE (Train):", rmse_train, "\n")
-cat("RMSE (Test):", rmse_test, "\n")
-cat("R-squared (Train):", rsq_train, "\n")
-cat("R-squared (Test):", rsq_test, "\n\n")
-
-cat("Cross-Validation:\n")
-cat("RMSE (CV):", mean(cv_rmse), "\n")
-cat("R-squared (CV):", mean(cv_rsq), "\n")
-
-# Option 3: Polynomial regression
-height_model_transformed_poly <- lm(childHeight ~ midparentHeight + I(midparentHeight^2), data = df_train)
-
-# Evaluate and compare with original model
-# Evaluate model using Holdout Validation ----
-df_train$pred <- predict(height_model_transformed_poly, newdata = df_train)
-df_test$pred <- predict(height_model_transformed_poly, newdata = df_test)
-
-
-# Load packages for regression evaluation
-# install.packages("caret")
-library(caret)
-
-# Evaluation metrics
-rmse_train <- RMSE(df_train$pred, df_train$childHeight)
-rmse_test <- RMSE(df_test$pred, df_test$childHeight)
-rsq_train <- cor(df_train$pred, df_train$childHeight)^2
-rsq_test <- cor(df_test$pred, df_test$childHeight)^2
-
-# Plot the predictions (on the x-axis) against the outcome (childHeight) on the test data
-# Visualize predictions vs. actuals
-ggplot(df_test, aes(x = pred, y = childHeight)) + 
-  geom_point() + 
-  geom_abline() +
-  labs(title = "Predicted vs Actual Child Height (Test Set)")
-
-# INTERPRETATION:
-
-# Cross-Validation Evaluation ----
-# Using 5-fold Cross-Validation
-cv_results <- train(childHeight ~ midparentHeight, data = df_height, method = "lm", trControl = trainControl(method = "cv", number = 5))
-cv_rmse <- cv_results$results$RMSE
-cv_rsq <- cv_results$results$Rsquared
-
-# Summary
-cat("Holdout Validation:\n")
-cat("RMSE (Train):", rmse_train, "\n")
-cat("RMSE (Test):", rmse_test, "\n")
-cat("R-squared (Train):", rsq_train, "\n")
-cat("R-squared (Test):", rsq_test, "\n\n")
-
-cat("Cross-Validation:\n")
-cat("RMSE (CV):", mean(cv_rmse), "\n")
-cat("R-squared (CV):", mean(cv_rsq), "\n")
