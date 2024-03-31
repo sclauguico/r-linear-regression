@@ -73,26 +73,26 @@ N
 
 # Set the seed to make your partition reproducible
 set.seed(143)
-train_ind <- sample(seq_len(N), size = smp_size)
+train_indeces <- sample(seq_len(N), size = smp_size)
 
 # Split dataset
-df_height_train <- df_height[train_ind, ]
-df_height_test <- df_height[-train_ind, ]
+df_train <- df_height[train_indeces, ]
+df_test <- df_height[-train_indeces, ]
 
 
 # Use nrow() to examine df_height_train_train and df_height_train_test
-nrow(df_height_train)
-nrow(df_height_test)
+nrow(df_train)
+nrow(df_test)
 
 #### Train a model using the train data ----
 # Show df_height_train stats summary
-summary(df_height_train)
+summary(df_train)
 
 # Create a formula to express childHeight as a function of midparentHeight: fmla and print it.
 (fmla <- childHeight ~ midparentHeight)
 
 # Use lm() to build a model height_model from df_height_train that predicts the child's height from the parent's mid height 
-height_model <- lm(fmla, data = df_height_train)
+height_model <- lm(fmla, data = df_train)
 
 # Use summary() to examine the model
 summary(height_model)
@@ -101,86 +101,70 @@ summary(height_model)
 
 
 #### Evaluate model using Holdout Validation ----
-# Examine the objects that have been loaded
-ls.str()
 
 # Manual prediction
 childHeight_pred <- 18.09189 + 0.70359 * 69.020
 
-# Predict childHeight from mideparentHeight for the training set using predict function
-df_height_train$pred <- predict(height_model, newdata = df_height_train)
+# Evaluate model using Holdout Validation ----
+df_train$pred <- predict(height_model, newdata = df_train)
+df_test$pred <- predict(height_model, newdata = df_test)
 
-# Predict childHeight from mideparentHeight for the test set using predict function
-df_height_test$pred <- predict(height_model, newdata = df_height_test)
 
 # Load packages for regression evaluation
 # install.packages("caret")
 library(caret)
 
-# Evaluate the rmse on both training and test data and print them
-(rmse_train <- RMSE(df_height_train$pred, df_height_train$childHeight))
-(rmse_test <- RMSE(df_height_test$pred, df_height_test$childHeight))
-
-# Create a function that calculates for r-squared
-r_squared <- function(predicted_values, actual_values) {
-  1 - sum((actual_values - predicted_values)^2) / sum((actual_values - mean(actual_values))^2)
-}
-
-# Evaluate the r-squared on both training and test data.and print them
-(rsq_train <- r_squared(df_height_train$pred, df_height_train$childHeight))
-(rsq_test <- r_squared(df_height_test$pred, df_height_test$childHeight))
+# Evaluation metrics
+rmse_train <- RMSE(df_train$pred, df_train$childHeight)
+rmse_test <- RMSE(df_test$pred, df_test$childHeight)
+rsq_train <- cor(df_train$pred, df_train$childHeight)^2
+rsq_test <- cor(df_test$pred, df_test$childHeight)^2
 
 # Plot the predictions (on the x-axis) against the outcome (childHeight) on the test data
-ggplot(df_height_test, aes(x = pred, y = childHeight)) + 
+# Visualize predictions vs. actuals
+ggplot(df_test, aes(x = pred, y = childHeight)) + 
   geom_point() + 
-  geom_abline()
-
+  geom_abline() +
+  labs(title = "Predicted vs Actual Child Height (Test Set)")
 
 # INTERPRETATION:
 
+# Cross-Validation Evaluation ----
+# Using 5-fold Cross-Validation
+cv_results <- train(childHeight ~ midparentHeight, data = df_height, method = "lm", trControl = trainControl(method = "cv", number = 5))
+cv_rmse <- cv_results$results$RMSE
+cv_rsq <- cv_results$results$Rsquared
+
+# Summary
+cat("Holdout Validation:\n")
+cat("RMSE (Train):", rmse_train, "\n")
+cat("RMSE (Test):", rmse_test, "\n")
+cat("R-squared (Train):", rsq_train, "\n")
+cat("R-squared (Test):", rsq_test, "\n\n")
+
+cat("Cross-Validation:\n")
+cat("RMSE (CV):", mean(cv_rmse), "\n")
+cat("R-squared (CV):", mean(cv_rsq), "\n")
+
+# INTERPRETATION:
+# Holdout Validation:
+
+# RMSE (Root Mean Squared Error):
+#   Train Set: RMSE is 3.47, indicating, on average, the model's predictions on the training set are off by approximately 3.47 units of the target variable.
+#   Test Set: RMSE is 3.19, showing that, on average, the model's predictions on the unseen test data are off by approximately 3.19 units of the target variable.
+# R-squared:
+#   Train Set: R-squared is 0.10, indicating that approximately 10% of the variance in the target variable is explained by the model on the training data.
+#   Test Set: R-squared is 0.11, suggesting that approximately 11% of the variance in the target variable is explained by the model on the test data.
 
 
+# Cross-Validation:
 
-#### Evaluate model using Cross Validation----
-# Load the package vtreat
-library(vtreat)
+#   RMSE (Root Mean Squared Error):
+#     Cross-Validation RMSE is 3.39, which is the average RMSE across all folds of the cross-validation process. It represents the model's generalization error.
+#   R-squared:
+#     Cross-Validation R-squared is 0.10, indicating the proportion of variance in the target variable that the model explains on average across all folds of the cross-validation process.
+# Overall, the model's performance seems consistent between the Holdout Validation and Cross-Validation results. However, the model's performance, as indicated by the R-squared values, is relatively low, suggesting that the model explains only a small portion of the variance in the target variable. This might imply that the model may not capture all relevant features or that the relationship between features and the target variable is inherently complex. Further model refinement or feature engineering may be necessary to improve performance.
 
-summary(df_height)
-
-# Get the number of rows in df_height
-nRows <- nrow(df_height)
-
-# Implement the 5-fold cross-fold plan with vtreat
-splitPlan <- kWayCrossValidation(nRows, 5, NULL, NULL)
-
-# Examine the split plan
-str(splitPlan)
-
-# Use Cross-Fold Validation to evaluate model
-summary(df_height)
-
-# splitPlan is available
-str(splitPlan)
-
-# Run the 3-fold cross validation plan from splitPlan
-k <- 5 # Number of folds
-df_height$pred.cv <- 0 
-for(i in 1:k) {
-  split <- splitPlan[[i]]
-  model <- lm(childHeight ~ midparentHeight, data = df_height[split$train, ])
-  df_height$pred.cv[split$app] <- predict(model, newdata = df_height[split$app, ])
-}
-
-# Predict from a full model
-df_height$pred <- predict(lm(midparentHeight ~ childHeight, data = df_height))
-
-# Get the rmse of the full model's predictions
-RMSE(df_height$pred, df_height$childHeight)
-
-# Get the rmse of the cross-validation predictions
-RMSE(df_height$pred.cv, df_height$childHeight)
-
-# INTERPRETATION
 
 
 #### Visualize the linear regression model
@@ -190,93 +174,65 @@ RMSE(df_height$pred.cv, df_height$childHeight)
 #### Other models ----
 
 # Create a formula to express childHeight as a function of midparentHeight: fmla and print it.
-(fmla_gender <- childHeight ~ midparentHeight + gender)
+# Create a formula to express childHeight as a function of midparentHeight: fmla and print it.
+(fmla <- childHeight ~ midparentHeight + gender)
 
-# Use lm() to build a model height_gender_model from df_height_train that predicts the child's height from the parent's mid height and child's gender 
-height_gender_model <- lm(fmla_gender, data = df_height_train)
+# Use lm() to build a model height_model from df_height_train that predicts the child's height from the parent's mid height 
+height_model <- lm(fmla, data = df_train)
 
 # Use summary() to examine the model
-summary(height_gender_model)
+summary(height_model)
 
 # INTERPRETATION:
 
 
 #### Evaluate model using Holdout Validation ----
-# Examine the objects that have been loaded
-ls.str()
 
 # Manual prediction
-childHeight_pred <- 15.0436 + 0.70805 * 69.020 + 5.2855(1)
+childHeight_pred <- 18.09189 + 0.70359 * 69.020
 
-# Predict childHeight from mideparentHeight for the training set using predict function
-df_height_train$pred <- predict(height_gender_model, newdata = df_height_train)
+# Evaluate model using Holdout Validation ----
+df_train$pred <- predict(height_model, newdata = df_train)
+df_test$pred <- predict(height_model, newdata = df_test)
 
-# Predict childHeight from mideparentHeight for the test set using predict function
-df_height_test$pred <- predict(height_gender_model, newdata = df_height_test)
 
 # Load packages for regression evaluation
 # install.packages("caret")
 library(caret)
 
-# Evaluate the rmse on both training and test data and print them
-(rmse_train <- RMSE(df_height_train$pred, df_height_train$childHeight))
-(rmse_test <- RMSE(df_height_test$pred, df_height_test$childHeight))
-
-# Create a function that calculates for r-squared
-r_squared <- function(predicted_values, actual_values) {
-  1 - sum((actual_values - predicted_values)^2) / sum((actual_values - mean(actual_values))^2)
-}
-
-# Evaluate the r-squared on both training and test data.and print them
-(rsq_train <- r_squared(df_height_train$pred, df_height_train$childHeight))
-(rsq_test <- r_squared(df_height_test$pred, df_height_test$childHeight))
+# Evaluation metrics
+rmse_train <- RMSE(df_train$pred, df_train$childHeight)
+rmse_test <- RMSE(df_test$pred, df_test$childHeight)
+rsq_train <- cor(df_train$pred, df_train$childHeight)^2
+rsq_test <- cor(df_test$pred, df_test$childHeight)^2
 
 # Plot the predictions (on the x-axis) against the outcome (childHeight) on the test data
-ggplot(df_height_test, aes(x = pred, y = childHeight)) + 
+# Visualize predictions vs. actuals
+ggplot(df_test, aes(x = pred, y = childHeight)) + 
   geom_point() + 
-  geom_abline()
-
+  geom_abline() +
+  labs(title = "Predicted vs Actual Child Height (Test Set)")
 
 # INTERPRETATION:
 
+# Cross-Validation Evaluation ----
+# Using 5-fold Cross-Validation
+cv_results <- train(childHeight ~ midparentHeight, data = df_height, method = "lm", trControl = trainControl(method = "cv", number = 5))
+cv_rmse <- cv_results$results$RMSE
+cv_rsq <- cv_results$results$Rsquared
 
+# Summary
+cat("Holdout Validation:\n")
+cat("RMSE (Train):", rmse_train, "\n")
+cat("RMSE (Test):", rmse_test, "\n")
+cat("R-squared (Train):", rsq_train, "\n")
+cat("R-squared (Test):", rsq_test, "\n\n")
 
+cat("Cross-Validation:\n")
+cat("RMSE (CV):", mean(cv_rmse), "\n")
+cat("R-squared (CV):", mean(cv_rsq), "\n")
 
-#### Evaluate model using Cross Validation----
-# Load the package vtreat
-library(vtreat)
-
-summary(df_height)
-
-# Get the number of rows in df_height
-nRows <- nrow(df_height)
-
-# Implement the 5-fold cross-fold plan with vtreat
-splitPlan <- kWayCrossValidation(nRows, 5, NULL, NULL)
-
-# Examine the split plan
-str(splitPlan)
-
-# Use Cross-Fold Validation to evaluate model
-summary(df_height)
-
-# splitPlan is available
-str(splitPlan)
-
-# Run the 3-fold cross validation plan from splitPlan
-k <- 5 # Number of folds
-df_height$pred.cv <- 0 
-for(i in 1:k) {
-  split <- splitPlan[[i]]
-  model <- lm(childHeight ~ midparentHeight, data = df_height[split$train, ])
-  df_height$pred.cv[split$app] <- predict(model, newdata = df_height[split$app, ])
-}
-
-# Predict from a full model
-df_height$pred <- predict(lm(midparentHeight ~ childHeight, data = df_height))
-
-# Get the rmse of the full model's predictions
-RMSE(df_height$pred, df_height$childHeight)
-
-# Get the rmse of the cross-validation predictions
-RMSE(df_height$pred.cv, df_height$childHeight)
+# INTERPRETATION:
+# When the R-squared is higher in holdout validation than in cross-validation, 
+# it could be a sign of overfitting, and further steps such as regularization or 
+# simplifying the model may be necessary to improve generalization performance.
