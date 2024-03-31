@@ -13,6 +13,6 @@ def check_salary_level(yrs_of_xp):
         return "Upskill ka muna!"
 
 
-my_expi = 3
+my_expi = 3.5
 result = check_salary_level(my_expi)
 print(result)
