@@ -1,5 +1,5 @@
 ##### PRELIMINARY DATA ANALYSIS ----
-# For crestarting environment
+# For restarting environment
 rm(list = ls())
 
 ##### Load packages ----
@@ -118,7 +118,33 @@ height_model <- lm(fmla, data = df_train)
 summary(height_model)
 
 # INTERPRETATION:
+# Residuals: Summary of residuals, which is the distance from the data to the fitted line.
+# Ideally, they should be symmetrically distributed about the line. 
+# We want the min value and max value to be approximately the same distance from 0
+# We want the 1Q and 3Q to be equidistant from 0
+# We want the median close to 0
 
+# Coefficients:
+# This shows the least-squares estimates for the fitted line
+# If midparentHeight os 0, then the predicted childHeight is the intercept 18.09189
+# The slope means that if midparentHeight increases by 1 inch, then the childHeight is predicted to increase by 0.70359 inchees
+
+# Std. Error and t-value are provided to show how the p-values were calculated:
+# t-stat = coefficient / std. error
+# std. error = sqrt of variance
+
+# p-value: We want this to be less than 0.05 to reject the null hypothesis that states that the independent variable is not significant
+# A significant p-value for midparentHeight means that it will give us a reliable guess of childHeight
+
+# Residual standard error: Teh sqrt of teh denominator in the equation for F
+# Multiple R-squared: midparentHeight can explain 12.29% of the variation in childHeight
+# Adjusted R-squared: the R-suqared scaled by the number or parameters in the model
+# F-statistic: Tells if R-squared is significant or not.
+# F = 91.24
+# Degrees of Freedom: 1 and 651
+# p-value: < 2.2e-16
+
+# midparentHeight is a reliable estimate for childHeight
 
 #### Evaluate model using Holdout Validation ----
 
@@ -145,6 +171,7 @@ rsq_test <- cor(df_test$pred, df_test$childHeight)^2
 ggplot(df_test, aes(x = pred, y = childHeight)) + 
   geom_point() + 
   geom_abline() +
+  geom_smooth(method = 'lm') +
   labs(title = "Predicted vs Actual Child Height (Test Set)")
 
 # INTERPRETATION:
@@ -190,15 +217,33 @@ cat("R-squared (CV):", mean(cv_rsq), "\n")
 
 ##### VISUALIZE THE MODEL ----
 
+# If a linear regression model is a good fit, then the residuals are approximately normally distributed, with mean zero.
+
+# Residuals vs Fitted:
+# If residuals met the assumption that they are normally distributed with mean zero, 
+# then the trend line should closely follow the y equals zero line on the plot.
+# Red line is LOESS trend line, smooth curve following the data
+
+# Q-Q Plot
+# It shows whether or not the residuals follow a normal distribution.
+# On the x-axis, the points are quantiles from the normal distribution. On the y-axis, you get the standardized residuals, 
+# which are the residuals divided by their standard deviation.
+# If the points track along the straight line, they are normally distributed. If not, they aren't.
+
+# Scale-Location
+# It shows the square root of the standardized residuals versus the fitted values. 
+
 par(mfrow = c(2,2))
 plot(height_model)
 
 # INTERPRETATION:
-# 1. The plot in the image shows a slight curvature, which suggests that the linear model might not be the best fit 
-# for the data. A curvilinear trend might be better captured with a polynomial regression model.
+# 1. The plot in the image shows that the red line approximately follows the sero line plot which means that the 
+# residuals met the assumption that they are normally distributed with mean equal to 0.
 
-# 2. The Q-Q plot in the image deviates from a straight line, 
-# which suggests that the residuals may not be normally distributed.
+# 2. Most of the data points follow the line closely. Three points at each extreme don't follow the line, namely:
+# point 817, 128, and 293, which correspond to the row of the dataset where the bad residuals occur.
+# In the left and right most side of the plot, the residuals are larger than expected. Poor fit for the taller and smaller
+# midparentHeight
 
 # 3. The scale-location plot in the image shows a slight funnel shape, which suggests that the 
 # variance of the errors might be increasing with the fitted values. 
@@ -225,7 +270,7 @@ performance::check_model(height_model)
 # This could indicate that the model's assumption of linearity is not met.
 
 
-#### Other models ----
+##### MULTILINEAR REGRESSION ----
 
 # Create a formula to express childHeight as a function of midparentHeight: fmla and print it.
 # Create a formula to express childHeight as a function of midparentHeight: fmla and print it.
@@ -265,6 +310,7 @@ rsq_test <- cor(df_test$pred, df_test$childHeight)^2
 ggplot(df_test, aes(x = pred, y = childHeight)) + 
   geom_point() + 
   geom_abline() +
+  geom_smooth(method = 'lm') +
   labs(title = "Predicted vs Actual Child Height (Test Set)")
 
 # INTERPRETATION:
@@ -314,3 +360,14 @@ library(performance)
 performance::check_model(height_model)
 
 # INTERPRETATION:
+# 1. 
+
+# 2.
+
+# 3. 
+
+# 4. 
+
+# 5.
+
+# 6.
