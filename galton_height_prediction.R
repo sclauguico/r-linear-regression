@@ -59,7 +59,7 @@ ggplot(df_height_eda, aes(x = pred, y = midparentHeight)) +
 par(mfrow = c(2,2))
 plot(m0) 
 
-# INTERPRETATION
+# INTERPRETATION:
 # Residuals vs Fitted: the residuals appear to be randomly scattered around a horizontal line at zero, which is a good sign.
 # This suggests that the model meets the assumptions of homoscedasticity (constant variance) and independence of errors.
 
@@ -126,27 +126,90 @@ summary(height_model)
 
 # Coefficients:
 # This shows the least-squares estimates for the fitted line
-# If midparentHeight os 0, then the predicted childHeight is the intercept 18.09189
-# The slope means that if midparentHeight increases by 1 inch, then the childHeight is predicted to increase by 0.70359 inchees
+# If midparentHeight is 0, then the predicted childHeight is the intercept, 18.09189
+# The slope means that if midparentHeight increases by 1 inch, 
+# then the childHeight is predicted to increase by 0.70359 inches
 
 # Std. Error and t-value are provided to show how the p-values were calculated:
-# t-stat = coefficient / std. error
-# std. error = sqrt of variance
+# std. error = sqrt of variance, typical variation of the coefficient
+# t-stat = coefficient / std. error, higher t-stat in magnitude is more stat sig 
+# (+ or just shows directly or inversely related)
+# p-value is derived from the t-distribution 
+# In the t-dist, H0 is that B1 = 0, coefficient does not explain dependent variable
+# What os the probability of getting a value of more than the t-value = 9.552? It's < 2e-16
+# There is 2e-16 * 100 chance of us getting a sample as extreme as we did for coeff of 0.70359 (too low)
+# Inferring that the coefficient for midparentHeight is indeed non-0, and can explain childHeight
+
 
 # p-value: We want this to be less than 0.05 to reject the null hypothesis that states that the independent variable is not significant
 # A significant p-value for midparentHeight means that it will give us a reliable guess of childHeight
 
-# Residual standard error: Teh sqrt of teh denominator in the equation for F
+# Residual standard error: The sqrt of the denominator in the equation for F
 # Multiple R-squared: midparentHeight can explain 12.29% of the variation in childHeight
 # Adjusted R-squared: the R-suqared scaled by the number or parameters in the model
 # F-statistic: Tells if R-squared is significant or not.
 # F = 91.24
 # Degrees of Freedom: 1 and 651
-# p-value: < 2.2e-16
+# p-value: < 2.2e-16, reject null hypothesis, line explains the observations
 
 # midparentHeight is a reliable estimate for childHeight
 
-#### Evaluate model using Holdout Validation ----
+
+##### VISUALIZE THE MODEL ----
+
+# If a linear regression model is a good fit, then the residuals are approximately normally distributed, with mean zero.
+
+# Residuals vs Fitted:
+# If residuals met the assumption that they are normally distributed with mean zero, 
+# then the trend line should closely follow the y equals zero line on the plot.
+# Red line is LOESS trend line, smooth curve following the data
+
+# Q-Q Plot
+# It shows whether or not the residuals follow a normal distribution.
+# On the x-axis, the points are quantiles from the normal distribution. On the y-axis, you get the standardized residuals, 
+# which are the residuals divided by their standard deviation.
+# If the points track along the straight line, they are normally distributed. If not, they aren't.
+
+# Scale-Location
+# It shows the square root of the standardized residuals versus the fitted values. 
+
+par(mfrow = c(2,2))
+plot(height_model)
+
+# INTERPRETATION:
+# 1. The plot in the image shows that the red line approximately follows the sero line plot which means that the 
+# residuals met the assumption that they are normally distributed with mean equal to 0.
+
+# 2. Most of the data points follow the line closely. Three points at each extreme don't follow the line, namely:
+# point 817, 128, and 293, which correspond to the row of the dataset where the bad residuals occur.
+# In the left and right most side of the plot, the residuals are larger than expected. Poor fit for the taller and smaller
+# midparentHeight
+
+# 3. The scale-location plot in the image shows a slight funnel shape, which suggests that the 
+# variance of the errors might be increasing with the fitted values. 
+# This is a violation of the homoscedasticity assumption. 
+
+# 4. The residuals vs leverage plot in the image doesn't show any clear pattern, which is a good sign. 
+# There are no outliers with high leverage that are heavily influencing the model.
+
+# install.packages("performance")
+library(performance)
+
+# Performance package:
+performance::check_model(height_model)
+
+# INTERPRETATION:
+# 1. it looks like the model-predicted data (green line) matches the observed data (blue line) reasonably well 
+# at the center of the plot. However, the tails of the distribution of the simulated data (density plot) 
+# appear to be thicker than the tails of the observed data. This suggests that the model may not be capturing 
+# the extreme values (very short or very tall children) as well as it captures the heights of children in the 
+# middle of the range.
+
+# 2. the residuals appear to be patterned. There is a curve in the scatter plot, which suggests that the
+# residuals are not independent of the fitted values. 
+# This could indicate that the model's assumption of linearity is not met.
+
+##### EVALUATE THE MODEL ----
 
 # Manual prediction
 childHeight_pred <- 18.09189 + 0.70359 * 69.020
@@ -212,62 +275,6 @@ cat("R-squared (CV):", mean(cv_rsq), "\n")
 #   R-squared:
 #     Cross-Validation R-squared is 0.10, indicating the proportion of variance in the target variable that the model explains on average across all folds of the cross-validation process.
 # Overall, the model's performance seems consistent between the Holdout Validation and Cross-Validation results. However, the model's performance, as indicated by the R-squared values, is relatively low, suggesting that the model explains only a small portion of the variance in the target variable. This might imply that the model may not capture all relevant features or that the relationship between features and the target variable is inherently complex. Further model refinement or feature engineering may be necessary to improve performance.
-
-
-
-##### VISUALIZE THE MODEL ----
-
-# If a linear regression model is a good fit, then the residuals are approximately normally distributed, with mean zero.
-
-# Residuals vs Fitted:
-# If residuals met the assumption that they are normally distributed with mean zero, 
-# then the trend line should closely follow the y equals zero line on the plot.
-# Red line is LOESS trend line, smooth curve following the data
-
-# Q-Q Plot
-# It shows whether or not the residuals follow a normal distribution.
-# On the x-axis, the points are quantiles from the normal distribution. On the y-axis, you get the standardized residuals, 
-# which are the residuals divided by their standard deviation.
-# If the points track along the straight line, they are normally distributed. If not, they aren't.
-
-# Scale-Location
-# It shows the square root of the standardized residuals versus the fitted values. 
-
-par(mfrow = c(2,2))
-plot(height_model)
-
-# INTERPRETATION:
-# 1. The plot in the image shows that the red line approximately follows the sero line plot which means that the 
-# residuals met the assumption that they are normally distributed with mean equal to 0.
-
-# 2. Most of the data points follow the line closely. Three points at each extreme don't follow the line, namely:
-# point 817, 128, and 293, which correspond to the row of the dataset where the bad residuals occur.
-# In the left and right most side of the plot, the residuals are larger than expected. Poor fit for the taller and smaller
-# midparentHeight
-
-# 3. The scale-location plot in the image shows a slight funnel shape, which suggests that the 
-# variance of the errors might be increasing with the fitted values. 
-# This is a violation of the homoscedasticity assumption. 
-
-# 4. The residuals vs leverage plot in the image doesn't show any clear pattern, which is a good sign. 
-# There are no outliers with high leverage that are heavily influencing the model.
-
-# install.packages("performance")
-library(performance)
-
-# Performance package:
-performance::check_model(height_model)
-
-# INTERPRETATION:
-# 1. it looks like the model-predicted data (green line) matches the observed data (blue line) reasonably well 
-# at the center of the plot. However, the tails of the distribution of the simulated data (density plot) 
-# appear to be thicker than the tails of the observed data. This suggests that the model may not be capturing 
-# the extreme values (very short or very tall children) as well as it captures the heights of children in the 
-# middle of the range.
-
-# 2. the residuals appear to be patterned. There is a curve in the scatter plot, which suggests that the
-# residuals are not independent of the fitted values. 
-# This could indicate that the model's assumption of linearity is not met.
 
 
 ##### MULTILINEAR REGRESSION ----
