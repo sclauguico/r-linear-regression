@@ -1,6 +1,17 @@
-##### PRELIMINARY DATA ANALYSIS ----
 # For restarting environment
 rm(list = ls())
+
+##### REGRESSION ANALYSIS WORKFLOW ----
+# 1. State hypothesis
+# 2. Data exploration
+# 3. Estimate a regression model
+# 4. Diagnostics
+# 5. Fix the biggest problems from step 4 and repeat from step 3
+# 6. Compare models
+# 7. Interpret regression coefficients
+
+##### PRELIMINARY DATA ANALYSIS ----
+
 
 ##### Load packages ----
 # GaltonFamilies dataset can be obtained from this package
@@ -25,15 +36,22 @@ summary(df_height)
 # Get the number of dimensions or dataset size
 dim(df_height)
 
-##### EDA ----
+# Step 1: State hypothesis
+# Parent's height is potentially a predictor for predicting the childHeight
+# H0: parent's height coefficient is 0, which means that it is not a factor for determining childHeight
+# Ha: parent's height coefficient is not 0, which means that it is  a factor for determining childHeight
 
+##### EDA ----
+# Step 2: Data exploration
 par(mfrow = c(2,2))
 plot(df_height$father, df_height$childHeight)
 plot(df_height$mother, df_height$childHeight)
 plot(df_height$midparentHeight, df_height$childHeight)
 
 # INTERPRETATION:
-# Seems like midparentHeight is potentially a better predictor for predicting the childHeight
+# Seems like midparentHeight might be a better predictor for predicting the childHeight
+
+
 
 ##### FEATURE ENGINEERING ----
 # Understand the Feature Engineered variable
@@ -111,8 +129,107 @@ summary(df_train)
 # Create a formula to express childHeight as a function of midparentHeight: fmla and print it.
 (fmla <- childHeight ~ midparentHeight)
 
+# Step 3: Estimate a regression model
 # Use lm() to build a model height_model from df_height_train that predicts the child's height from the parent's mid height 
 height_model <- lm(fmla, data = df_train)
+
+
+##### VISUALIZE THE MODEL ----
+# Step 4: Diagnostics
+# Assumptions of Linear Regression and Diagnosing Violations of Those Assumptions
+
+# 1. L - Linear: There is a linear relationship between x and y. If not linear model won't be a good fit for the data and the parameter estimates are meaningless
+# 2. I - Independent variables: X1 and X2 should not be perfect collinear. This tells if feature selection is needed. Often violated when the data are collected over time , like time-series data, as successive residuals tend to be positively correlated like temp in a city, which is correlated with the season and unlikely to be random
+# 3. N - Normal: Residuals are normally distributed, nice-to-have but not required
+# 4. E - Equal Variance: Homoscedasticity. Error term (residuals is used to estimate error term) is normally dist. If assumption is violated regression model maybe a poor fit
+
+# We need to check these assumptions when performing linear regression
+# as validations of these assumptions can have substantial impact on the parameter
+# estimates, including levels of stats sig
+
+# If a linear regression model is a good fit, 
+# then the residuals are approximately normally distributed, with mean zero.
+# This means that the error is not random.
+
+#  How to Diagnose?
+#  Assumption 1 and 4
+# Residuals vs Fitted:
+# A residual plot is a plot of the residuals on the y-axis vs the predicted values of the dep var on the x-axis
+# Points should be symmetrically distributed  around the line, ideally spread out without pattern
+# If residuals met the assumption that they are normally distributed with mean zero, 
+# then the trend line should closely follow the y equals zero line on the plot.
+# Red line is LOESS trend line, smooth curve following the data
+
+# If there is a curve linear trend on the residuals, it suggests that the relationship between x and y is not linear
+# and we should not use a straight line to model this data
+
+# Assumption 3
+# Q-Q Plot
+# It shows whether or not the residuals follow a normal distribution.
+# On the x-axis, the points are quantiles of the normal dist having the same mean and variance. 
+# On the y-axis, you get the standardized residuals, 
+# which are the residuals divided by their standard deviation.
+# If the points track along the straight line, they are normally distributed.
+# If not, they are not.
+
+# If there is a bow-shape in the data points compared to the line, the deviations from the diagonal
+# line indicates that the residuals have excessive skewness and are not symmetrically distributed
+# and have many log errors on the positive direction if data points are 
+# above the line, negative below
+# S-shaped - shows a distributions that is under dispersed first relative to normal distribution
+# or like a uniform distribution
+# Bow- and S- shpaed dists indicated that the regression residuals are not normally distributed, which violates assumption 3
+
+# Assumption 4
+# Scale-Location
+# It shows the square root of the standardized residuals versus the fitted values. 
+# Can be symmetrical, but if funnelled, then variabce is not equal
+
+# Residuals vs Leverage
+#  Tells which observations are influential
+
+
+
+par(mfrow = c(2,2))
+plot(height_model)
+
+# INTERPRETATION:
+# Step 7: Interpret regression models
+# 1. The plot in the image shows that the red line approximately follows the zero line plot
+# and the dots are symmetrically distributed which means that the 
+# residuals met the assumption that they are normally distributed with approx. mean equal to 0.
+
+# 2. Most of the data points follow the line closely. Three points at each extreme don't follow the line, namely:
+# point 817, 128, and 293, which correspond to the row of the dataset where the bad residuals occur.
+# In the left and right most side of the plot, the residuals are larger than expected. Poor fit for the taller and smaller
+# midparentHeight
+
+# 3. The scale-location plot in the image shows a slight funnel shape, which suggests that the 
+# variance of the errors might be increasing with the fitted values. 
+# This is a violation of the homoscedasticity assumption. 
+
+# 4. The residuals vs leverage plot in the image doesn't show any clear pattern, which is a good sign. 
+# There are no outliers with high leverage that are heavily influencing the model.
+# Sample 230 has leverage and label 128  and 859 has large residual, label 859 has high leverage
+
+# install.packages("performance")
+library(performance)
+
+# Performance package:
+performance::check_model(height_model)
+
+# INTERPRETATION:
+# 1. it looks like the model-predicted data (green line) matches the observed data (blue line) reasonably well 
+# at the center of the plot. However, the tails of the distribution of the simulated data (density plot) 
+# appear to be thicker than the tails of the observed data. This suggests that the model may not be capturing 
+# the extreme values (very short or very tall children) as well as it captures the heights of children in the 
+# middle of the range.
+
+# 2. the residuals appear to be patterned. There is a curve in the scatter plot, which suggests that the
+# residuals are not independent of the fitted values. 
+# This could indicate that the model's assumption of linearity is not met.
+
+##### INTERPRET THE MODEL ----
 
 # Use summary() to examine the model
 summary(height_model)
@@ -153,61 +270,6 @@ summary(height_model)
 # p-value: < 2.2e-16, reject null hypothesis, line explains the observations
 
 # midparentHeight is a reliable estimate for childHeight
-
-
-##### VISUALIZE THE MODEL ----
-
-# If a linear regression model is a good fit, then the residuals are approximately normally distributed, with mean zero.
-
-# Residuals vs Fitted:
-# If residuals met the assumption that they are normally distributed with mean zero, 
-# then the trend line should closely follow the y equals zero line on the plot.
-# Red line is LOESS trend line, smooth curve following the data
-
-# Q-Q Plot
-# It shows whether or not the residuals follow a normal distribution.
-# On the x-axis, the points are quantiles from the normal distribution. On the y-axis, you get the standardized residuals, 
-# which are the residuals divided by their standard deviation.
-# If the points track along the straight line, they are normally distributed. If not, they aren't.
-
-# Scale-Location
-# It shows the square root of the standardized residuals versus the fitted values. 
-
-par(mfrow = c(2,2))
-plot(height_model)
-
-# INTERPRETATION:
-# 1. The plot in the image shows that the red line approximately follows the sero line plot which means that the 
-# residuals met the assumption that they are normally distributed with mean equal to 0.
-
-# 2. Most of the data points follow the line closely. Three points at each extreme don't follow the line, namely:
-# point 817, 128, and 293, which correspond to the row of the dataset where the bad residuals occur.
-# In the left and right most side of the plot, the residuals are larger than expected. Poor fit for the taller and smaller
-# midparentHeight
-
-# 3. The scale-location plot in the image shows a slight funnel shape, which suggests that the 
-# variance of the errors might be increasing with the fitted values. 
-# This is a violation of the homoscedasticity assumption. 
-
-# 4. The residuals vs leverage plot in the image doesn't show any clear pattern, which is a good sign. 
-# There are no outliers with high leverage that are heavily influencing the model.
-
-# install.packages("performance")
-library(performance)
-
-# Performance package:
-performance::check_model(height_model)
-
-# INTERPRETATION:
-# 1. it looks like the model-predicted data (green line) matches the observed data (blue line) reasonably well 
-# at the center of the plot. However, the tails of the distribution of the simulated data (density plot) 
-# appear to be thicker than the tails of the observed data. This suggests that the model may not be capturing 
-# the extreme values (very short or very tall children) as well as it captures the heights of children in the 
-# middle of the range.
-
-# 2. the residuals appear to be patterned. There is a curve in the scatter plot, which suggests that the
-# residuals are not independent of the fitted values. 
-# This could indicate that the model's assumption of linearity is not met.
 
 ##### EVALUATE THE MODEL ----
 
