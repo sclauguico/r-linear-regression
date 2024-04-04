@@ -1,6 +1,9 @@
 # For restarting environment
 rm(list = ls())
 
+PWD <- file.path(dirname(rstudioapi::getActiveDocumentContext()$path))
+setwd(PWD)
+
 ##### REGRESSION ANALYSIS WORKFLOW ----
 # 1. State hypothesis
 # 2. Data exploration
@@ -197,7 +200,7 @@ library(performance)
 # Performance package:
 performance::check_model(height_model)
 
-# INTERPRETATION:
+# INTIRPRETATION:
 # 1. it looks like the model-predicted data (green line) matches the observed data (blue line) reasonably well, 
 # except at the center of the plot.
 
@@ -254,12 +257,18 @@ childHeight_pred <- 18.09189 + 0.70359 * 69.020
 df_train$pred <- predict(height_model, newdata = df_train)
 df_test$pred <- predict(height_model, newdata = df_test)
 
+data.table::fwrite(df_train, "train_prediction.csv")
+data.table::fwrite(df_test, "test_prediction.csv")
 
 # Load packages for regression evaluation
 # install.packages("caret")
 library(caret)
 
 # Evaluation metrics
+mae_train <- mean(abs(df_train$pred - df_train$childHeight))
+mae_test <- mean(abs(df_test$pred - df_test$childHeight))
+mse_train <- mean((df_train$pred - df_train$childHeight)^2)
+mse_test <- mean((df_test$pred - df_test$childHeight)^2)
 rmse_train <- RMSE(df_train$pred, df_train$childHeight)
 rmse_test <- RMSE(df_test$pred, df_test$childHeight)
 rsq_train <- cor(df_train$pred, df_train$childHeight)^2
@@ -279,38 +288,68 @@ ggplot(df_test, aes(x = pred, y = childHeight)) +
 # Using 5-fold Cross-Validation
 set.seed(143)
 cv_results <- train(childHeight ~ midparentHeight, data = df_height, method = "lm", trControl = trainControl(method = "cv", number = 5))
+cv_mae <- cv_results$results$MAE
+cv_mse <- cv_results$results$MSE
 cv_rmse <- cv_results$results$RMSE
 cv_rsq <- cv_results$results$Rsquared
 
 # Summary
 cat("Holdout Validation:\n")
+cat("MAE (Train):", mae_train, "\n")
+cat("MAE (Test):", mae_test, "\n")
+
+cat("MSE (Train):", mse_train, "\n")
+cat("MSE (Test):", mse_test, "\n\n")
+
 cat("RMSE (Train):", rmse_train, "\n")
 cat("RMSE (Test):", rmse_test, "\n")
+
 cat("R-squared (Train):", rsq_train, "\n")
 cat("R-squared (Test):", rsq_test, "\n\n")
 
 cat("Cross-Validation:\n")
+cat("MAE (CV):", mean(cv_mae), "\n")
+cat("MSE (CV):", mean(cv_mse), "\n")
 cat("RMSE (CV):", mean(cv_rmse), "\n")
 cat("R-squared (CV):", mean(cv_rsq), "\n")
 
 # INTERPRETATION:
+
+# Training vs. Testing Dataset:
+
+# MAE, RMSE, MSE: Generally, you would expect these error metrics to be lower on the training dataset compared to the testing dataset. 
+# If the error metrics are significantly higher (can be done using paired t-test) on the testing dataset, it could indicate overfitting, where the model has memorized the training data 
+# but fails to generalize well. 
+# *Values are from 0 to inf
+
+# R²: Conversely, you would expect R² to be higher on the training dataset compared to the testing dataset. 
+# A large disparity between the R² values of the training and testing datasets may indicate overfitting.
+# *Values are from 0 to 1
+
 # Holdout Validation:
 
 # RMSE (Root Mean Squared Error):
-#   Train Set: RMSE is 3.47, indicating, on average, the model's predictions on the training set are off by approximately 3.47 units of the target variable.
-#   Test Set: RMSE is 3.19, showing that, on average, the model's predictions on the unseen test data are off by approximately 3.19 units of the target variable.
+#   Train Set: RMSE is 3.44, indicating on average, the model's predictions on the training set are off by approximately 3.44 units of the target variable.
+#   Test Set: RMSE is 3.25, showing that on average, the model's predictions on the unseen test data are off by approximately 3.25 units of the target variable.
 # R-squared:
-#   Train Set: R-squared is 0.10, indicating that approximately 10% of the variance in the target variable is explained by the model on the training data.
-#   Test Set: R-squared is 0.11, suggesting that approximately 11% of the variance in the target variable is explained by the model on the test data.
+#   Train Set: R-squared is 0.12, indicating that approximately 12% of the variance in the target variable is explained by the model on the training data.
+#   Test Set: R-squared is 0.05, suggesting that approximately 5% of the variance in the target variable is explained by the model on the test data.
 
 
 # Cross-Validation:
 
 #   RMSE (Root Mean Squared Error):
 #     Cross-Validation RMSE is 3.39, which is the average RMSE across all folds of the cross-validation process. It represents the model's generalization error.
+#     It is slightly higher than the RMSE in holdout test, which could mean that the holdout model was overfitting. But we should test for sig to validate.
+
 #   R-squared:
-#     Cross-Validation R-squared is 0.10, indicating the proportion of variance in the target variable that the model explains on average across all folds of the cross-validation process.
-# Overall, the model's performance seems consistent between the Holdout Validation and Cross-Validation results. However, the model's performance, as indicated by the R-squared values, is relatively low, suggesting that the model explains only a small portion of the variance in the target variable. This might imply that the model may not capture all relevant features or that the relationship between features and the target variable is inherently complex. Further model refinement or feature engineering may be necessary to improve performance.
+#     Cross-Validation R-squared is 0.11, indicating the proportion of variance in the target variable that the model explains on average across all folds of the cross-validation process.
+
+# Overall, the model's performance seems consistent between the Holdout Validation and Cross-Validation results. 
+# However, the model's performance, as indicated by the R-squared values, is relatively low, suggesting that the model explains only 
+# a small portion of the variance in the target variable. This might imply that the model may not capture all relevant features or that 
+# the relationship between features and the target variable is inherently complex. Further model refinement or feature engineering may be 
+# necessary to improve performance.
 
 
 ##### MULTILINEAR REGRESSION ----
@@ -343,6 +382,10 @@ df_test$pred <- predict(height_model, newdata = df_test)
 library(caret)
 
 # Evaluation metrics
+mae_train <- mean(abs(df_train$pred - df_train$childHeight))
+mae_test <- mean(abs(df_test$pred - df_test$childHeight))
+mse_train <- mean((df_train$pred - df_train$childHeight)^2)
+mse_test <- mean((df_test$pred - df_test$childHeight)^2)
 rmse_train <- RMSE(df_train$pred, df_train$childHeight)
 rmse_test <- RMSE(df_test$pred, df_test$childHeight)
 rsq_train <- cor(df_train$pred, df_train$childHeight)^2
@@ -361,18 +404,29 @@ ggplot(df_test, aes(x = pred, y = childHeight)) +
 # Cross-Validation Evaluation ----
 # Using 5-fold Cross-Validation
 set.seed(143)
-cv_results <- train(childHeight ~ midparentHeight, data = df_height, method = "lm", trControl = trainControl(method = "cv", number = 5))
+cv_results <- train(fmla, data = df_height, method = "lm", trControl = trainControl(method = "cv", number = 5))
+cv_mae <- cv_results$results$MAE
+cv_mse <- cv_results$results$MSE
 cv_rmse <- cv_results$results$RMSE
 cv_rsq <- cv_results$results$Rsquared
 
 # Summary
 cat("Holdout Validation:\n")
+cat("MAE (Train):", mae_train, "\n")
+cat("MAE (Test):", mae_test, "\n")
+
+cat("MSE (Train):", mse_train, "\n")
+cat("MSE (Test):", mse_test, "\n\n")
+
 cat("RMSE (Train):", rmse_train, "\n")
 cat("RMSE (Test):", rmse_test, "\n")
+
 cat("R-squared (Train):", rsq_train, "\n")
 cat("R-squared (Test):", rsq_test, "\n\n")
 
 cat("Cross-Validation:\n")
+cat("MAE (CV):", mean(cv_mae), "\n")
+cat("MSE (CV):", mean(cv_mse), "\n")
 cat("RMSE (CV):", mean(cv_rmse), "\n")
 cat("R-squared (CV):", mean(cv_rsq), "\n")
 
