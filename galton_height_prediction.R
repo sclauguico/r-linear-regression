@@ -17,6 +17,7 @@ rm(list = ls())
 # GaltonFamilies dataset can be obtained from this package
 # install.packages("HistData")
 library(HistData)
+library(tidyverse)
 
 ##### Import data and store to df_height ----
 data(GaltonFamilies)
@@ -51,8 +52,6 @@ plot(df_height$midparentHeight, df_height$childHeight)
 # INTERPRETATION:
 # Seems like midparentHeight might be a better predictor for predicting the childHeight
 
-
-
 ##### FEATURE ENGINEERING ----
 # Understand the Feature Engineered variable
 # mideparentHeight = (father + 1.08*mother)/2
@@ -71,32 +70,10 @@ ggplot(df_height_eda, aes(x = pred, y = midparentHeight)) +
   geom_abline()
   
 # INTERPRETATION:
-# We can predict midparentHeight witt this equation:
+# We can predict midparentHeight with this equation:
 # midparentHeight = 0.5 (father) + 0.54 (mother)
 # PERFECT FIT
-par(mfrow = c(2,2))
-plot(m0) 
 
-# INTERPRETATION:
-# Residuals vs Fitted: the residuals appear to be randomly scattered around a horizontal line at zero, which is a good sign.
-# This suggests that the model meets the assumptions of homoscedasticity (constant variance) and independence of errors.
-
-# Normal Q-Q: In a normal Q-Q plot, if the data follows a normal distribution, 
-# the points will fall close to a straight diagonal line. If the data deviates from normality, 
-# the points will fall away from the line.
-
-# Scale-Location: The points deviate from the straight diagonal line, which suggests that the data is not normally distributed. 
-# Specifically, the points in the tails are farther away from the line, which suggests that the data may have 
-# heavier tails than a normal distribution. This means that there are more extreme values in the data than would 
-# be expected in a normal distribution.
-# These are called outliers can be addressed using outlier-handling techniques
-
-# The red line shows a slight upward trend as the fitted values increase. This suggests that the variance of the residuals might be increasing with the fitted values, violating the assumption of homoscedasticity.
-# There is also some curvature in the red line, which could indicate a non-normal distribution of errors.
-# Overall: The scale-location plot in the image suggests that the linear regression model might not meet the assumptions of homoscedasticity and normality of errors. 
-
-# Residual vs Leverage: There are no data points far from the center on the x-axis, so leverage doesn't seem to be a major concern. 
-# However, it's difficult to say definitively without the actual data or Cook's distance values.
 
 ##### MODEL TRAINING ----
 #### Split dataset to train/test data ----
@@ -138,79 +115,81 @@ height_model <- lm(fmla, data = df_train)
 # Step 4: Diagnostics
 # Assumptions of Linear Regression and Diagnosing Violations of Those Assumptions
 
+#  Why?
+# We need to check these assumptions when performing linear regression
+# as validations of these assumptions can have substantial impact on the parameter
+# estimates, including levels of stats sig
+
+# What?
 # 1. L - Linear: There is a linear relationship between x and y. If not linear model won't be a good fit for the data and the parameter estimates are meaningless
 # 2. I - Independent variables: X1 and X2 should not be perfect collinear. This tells if feature selection is needed. Often violated when the data are collected over time , like time-series data, as successive residuals tend to be positively correlated like temp in a city, which is correlated with the season and unlikely to be random
 # 3. N - Normal: Residuals are normally distributed, nice-to-have but not required
 # 4. E - Equal Variance: Homoscedasticity. Error term (residuals is used to estimate error term) is normally dist. If assumption is violated regression model maybe a poor fit
 
-# We need to check these assumptions when performing linear regression
-# as validations of these assumptions can have substantial impact on the parameter
-# estimates, including levels of stats sig
+# How?
+# Assumptions 1 and 4
+# Residuals vs Fitted:
+# A residual plot is a plot of the residuals on the y-axis vs the predicted values of the dep var on the x-axis
+# Points should be symmetrically distributed around the line, ideally spread out without pattern
+# If residuals met the assumption that they are normally distributed with mean zero, 
+# then the trend line should closely follow the y equals zero line on the plot.
+# Red line is LOESS trend line, smooth curve following the data
 
 # If a linear regression model is a good fit, 
 # then the residuals are approximately normally distributed, with mean zero.
 # This means that the error is not random.
 
-#  How to Diagnose?
-#  Assumption 1 and 4
-# Residuals vs Fitted:
-# A residual plot is a plot of the residuals on the y-axis vs the predicted values of the dep var on the x-axis
-# Points should be symmetrically distributed  around the line, ideally spread out without pattern
-# If residuals met the assumption that they are normally distributed with mean zero, 
-# then the trend line should closely follow the y equals zero line on the plot.
-# Red line is LOESS trend line, smooth curve following the data
-
 # If there is a curve linear trend on the residuals, it suggests that the relationship between x and y is not linear
 # and we should not use a straight line to model this data
 
+# Assumption 2:
+# Can be observed by using Pearson correlation as part of EDA, and handled by Feature Selection techniques in Feature Engineering
+
 # Assumption 3
-# Q-Q Plot
+# Q-Q Plot:
 # It shows whether or not the residuals follow a normal distribution.
-# On the x-axis, the points are quantiles of the normal dist having the same mean and variance. 
-# On the y-axis, you get the standardized residuals, 
-# which are the residuals divided by their standard deviation.
-# If the points track along the straight line, they are normally distributed.
-# If not, they are not.
+# On the x-axis: The points are quantiles of the normal dist having the same mean and variance. 
+# On the y-axis: The standardized residuals, which are the residuals divided by their standard deviation.
+# If the data follows a normal distribution,  the points will fall close to a straight diagonal line. 
+# If the data deviates from normality, the points will fall away from the line.
 
 # If there is a bow-shape in the data points compared to the line, the deviations from the diagonal
 # line indicates that the residuals have excessive skewness and are not symmetrically distributed
-# and have many log errors on the positive direction if data points are 
-# above the line, negative below
+# and have many log errors on the positive direction if data points are above the line, negative below
 # S-shaped - shows a distributions that is under dispersed first relative to normal distribution
 # or like a uniform distribution
-# Bow- and S- shpaed dists indicated that the regression residuals are not normally distributed, which violates assumption 3
+# Bow- and S- shaped dists indicated that the regression residuals are not normally distributed, which violates assumption 3
 
-# Assumption 4
+# Assumptions 1 and 4
 # Scale-Location
 # It shows the square root of the standardized residuals versus the fitted values. 
-# Can be symmetrical, but if funnelled, then variabce is not equal
+# Can be symmetrical, but if funneled, then variance is not equal
 
 # Residuals vs Leverage
-#  Tells which observations are influential
-
-
+#  Tells which observations are influential. Resuduals with high leverage can skew results
 
 par(mfrow = c(2,2))
 plot(height_model)
 
 # INTERPRETATION:
 # Step 7: Interpret regression models
-# 1. The plot in the image shows that the red line approximately follows the zero line plot
-# and the dots are symmetrically distributed which means that the 
-# residuals met the assumption that they are normally distributed with approx. mean equal to 0.
+# 1. The plot in the image shows that the red line approximately follows the zero line plot.
+# The residuals appear to be randomly scattered around the horizontal line at zero, which is a good sign.
+# They are symmetrically distributed which means that the residuals met the assumption that they are normally distributed with approx. mean equal to 0.
+# This suggests that the model meets the assumptions of homoscedasticity (constant variance) and independence of errors. 
+# Equal variance means the prediction, closely follows the linear model closely
 
 # 2. Most of the data points follow the line closely. Three points at each extreme don't follow the line, namely:
 # point 817, 128, and 293, which correspond to the row of the dataset where the bad residuals occur.
-# In the left and right most side of the plot, the residuals are larger than expected. Poor fit for the taller and smaller
+# The linear portion in the middle suggests the data have more extreme values (or outliers) than the normal distribution in the tails
+# In the left and right most side of the plot, the residuals are larger than expected. Poor fit for the extremely taller and smaller
 # midparentHeight
 
-# 3. The scale-location plot in the image shows a slight funnel shape, which suggests that the 
-# variance of the errors might be increasing with the fitted values. 
-# This is a violation of the homoscedasticity assumption. 
+# 3. The scale-location plot. Residuals are scattered. This suggests that the model meets the assumptions of homoscedasticity  
 
 # 4. The residuals vs leverage plot in the image doesn't show any clear pattern, which is a good sign. 
 # There are no outliers with high leverage that are heavily influencing the model.
-# Sample 230 has leverage and label 128  and 859 has large residual, label 859 has high leverage
+# Sample 230 has leverage and label 128 and 859 has large residual, label 859 has high leverage, which can skew the results
 
 # install.packages("performance")
 library(performance)
@@ -219,15 +198,11 @@ library(performance)
 performance::check_model(height_model)
 
 # INTERPRETATION:
-# 1. it looks like the model-predicted data (green line) matches the observed data (blue line) reasonably well 
-# at the center of the plot. However, the tails of the distribution of the simulated data (density plot) 
-# appear to be thicker than the tails of the observed data. This suggests that the model may not be capturing 
-# the extreme values (very short or very tall children) as well as it captures the heights of children in the 
-# middle of the range.
+# 1. it looks like the model-predicted data (green line) matches the observed data (blue line) reasonably well, 
+# except at the center of the plot.
 
-# 2. the residuals appear to be patterned. There is a curve in the scatter plot, which suggests that the
-# residuals are not independent of the fitted values. 
-# This could indicate that the model's assumption of linearity is not met.
+# 2. The residuals appear to be scattered. This suggests that the
+# residuals are independent of the fitted values. 
 
 ##### INTERPRET THE MODEL ----
 
@@ -256,7 +231,6 @@ summary(height_model)
 # What os the probability of getting a value of more than the t-value = 9.552? It's < 2e-16
 # There is 2e-16 * 100 chance of us getting a sample as extreme as we did for coeff of 0.70359 (too low)
 # Inferring that the coefficient for midparentHeight is indeed non-0, and can explain childHeight
-
 
 # p-value: We want this to be less than 0.05 to reject the null hypothesis that states that the independent variable is not significant
 # A significant p-value for midparentHeight means that it will give us a reliable guess of childHeight
