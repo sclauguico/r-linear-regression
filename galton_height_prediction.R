@@ -1,6 +1,7 @@
 # For restarting environment
 rm(list = ls())
 
+# Set working directory
 PWD <- file.path(dirname(rstudioapi::getActiveDocumentContext()$path))
 setwd(PWD)
 
@@ -14,7 +15,6 @@ setwd(PWD)
 # 7. Interpret regression coefficients
 
 ##### PRELIMINARY DATA ANALYSIS ----
-
 
 ##### Load packages ----
 # GaltonFamilies dataset can be obtained from this package
@@ -57,7 +57,7 @@ plot(df_height$midparentHeight, df_height$childHeight)
 
 ##### FEATURE ENGINEERING ----
 # Understand the Feature Engineered variable
-# mideparentHeight = (father + 1.08*mother)/2
+# midparentHeight = (father + 1.08*mother)/2
 m0 <- lm(midparentHeight ~ father + mother, data = df_height)
 summary(m0)
 
@@ -86,7 +86,7 @@ N <- nrow(df_height)
 N
 
 # Get 70% of N to split the dataset into 70% for training and the remaining 30% for testing
-# Use round() to get an integer
+# Use floor() to get an integer
 # Enclosing the whole variable declaration will print the value of the variable
 (smp_size <- floor(0.70 * N))
 
@@ -112,7 +112,6 @@ summary(df_train)
 # Step 3: Estimate a regression model
 # Use lm() to build a model height_model from df_height_train that predicts the child's height from the parent's mid height 
 height_model <- lm(fmla, data = df_train)
-
 
 ##### VISUALIZE THE MODEL ----
 # Step 4: Diagnostics
@@ -169,7 +168,7 @@ height_model <- lm(fmla, data = df_train)
 # Can be symmetrical, but if funneled, then variance is not equal
 
 # Residuals vs Leverage
-#  Tells which observations are influential. Resuduals with high leverage can skew results
+#  Tells which observations are influential. Residuals with high leverage can skew results
 
 par(mfrow = c(2,2))
 plot(height_model)
@@ -271,8 +270,8 @@ mse_train <- mean((df_train$pred - df_train$childHeight)^2)
 mse_test <- mean((df_test$pred - df_test$childHeight)^2)
 rmse_train <- RMSE(df_train$pred, df_train$childHeight)
 rmse_test <- RMSE(df_test$pred, df_test$childHeight)
-rsq_train <- cor(df_train$pred, df_train$childHeight)^2
-rsq_test <- cor(df_test$pred, df_test$childHeight)^2
+rsq_train <- 1 - sum((df_train$pred - df_train$childHeight)^2) / sum((df_train$childHeight - mean(df_train$childHeight))^2)
+rsq_test <- 1 - sum((df_test$pred - df_test$childHeight)^2) / sum((df_test$childHeight - mean(df_test$childHeight))^2)
 
 # Plot the predictions (on the x-axis) against the outcome (childHeight) on the test data
 # Visualize predictions vs. actuals
@@ -316,6 +315,22 @@ cat("R-squared (CV):", mean(cv_rsq), "\n")
 # INTERPRETATION:
 
 # Training vs. Testing Dataset:
+
+# MAE measures the average absolute difference between the predicted and actual values.
+# Use MAE when you want a metric that is easy to interpret and reflects the average magnitude of errors in the same units as the target variable.
+# MAE is robust to outliers because it doesn't square the errors.
+# It's suitable for situations where all errors are equally important, and there are no extreme outliers.
+# Mean Squared Error (MSE):
+
+# MSE measures the average squared difference between the predicted and actual values.
+# Use MSE when you want a metric that penalizes larger errors more heavily than smaller ones.
+# MSE is not in the same units as the target variable because of the squaring operation.
+# It's sensitive to outliers due to the squaring operation, so be cautious when dealing with datasets with outliers.
+
+# RMSE is the square root of MSE and is expressed in the same units as the target variable.
+# Use RMSE when you want a metric that is more interpretable than MSE and is in the same units as the target variable.
+# Like MSE, RMSE penalizes larger errors more heavily than smaller ones.
+# It's also sensitive to outliers due to the squaring operation in MSE.
 
 # MAE, RMSE, MSE: Generally, you would expect these error metrics to be lower on the training dataset compared to the testing dataset. 
 # If the error metrics are significantly higher (can be done using paired t-test) on the testing dataset, it could indicate overfitting, where the model has memorized the training data 
