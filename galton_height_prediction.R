@@ -177,7 +177,8 @@ plot(height_model)
 # Step 7: Interpret regression models
 # 1. The plot in the image shows that the red line approximately follows the zero line plot.
 # The residuals appear to be randomly scattered around the horizontal line at zero, which is a good sign.
-# They are symmetrically distributed which means that the residuals met the assumption that they are normally distributed with approx. mean equal to 0.
+# They are symmetrically distributed which means that the residuals met the assumption that they are normally distributed with approx. 
+# mean equal to 0.
 # This suggests that the model meets the assumptions of homoscedasticity (constant variance) and independence of errors. 
 # Equal variance means the prediction, closely follows the linear model closely
 
@@ -205,6 +206,7 @@ performance::check_model(height_model)
 
 # 2. The residuals appear to be scattered. This suggests that the
 # residuals are independent of the fitted values. 
+
 
 ##### INTERPRET THE MODEL ----
 
@@ -320,7 +322,6 @@ cat("R-squared (CV):", mean(cv_rsq), "\n")
 # Use MAE when you want a metric that is easy to interpret and reflects the average magnitude of errors in the same units as the target variable.
 # MAE is robust to outliers because it doesn't square the errors.
 # It's suitable for situations where all errors are equally important, and there are no extreme outliers.
-# Mean Squared Error (MSE):
 
 # MSE measures the average squared difference between the predicted and actual values.
 # Use MSE when you want a metric that penalizes larger errors more heavily than smaller ones.
@@ -346,6 +347,7 @@ cat("R-squared (CV):", mean(cv_rsq), "\n")
 # RMSE (Root Mean Squared Error):
 #   Train Set: RMSE is 3.44, indicating on average, the model's predictions on the training set are off by approximately 3.44 units of the target variable.
 #   Test Set: RMSE is 3.25, showing that on average, the model's predictions on the unseen test data are off by approximately 3.25 units of the target variable.
+
 # R-squared:
 #   Train Set: R-squared is 0.12, indicating that approximately 12% of the variance in the target variable is explained by the model on the training data.
 #   Test Set: R-squared is 0.05, suggesting that approximately 5% of the variance in the target variable is explained by the model on the test data.
@@ -366,23 +368,89 @@ cat("R-squared (CV):", mean(cv_rsq), "\n")
 # the relationship between features and the target variable is inherently complex. Further model refinement or feature engineering may be 
 # necessary to improve performance.
 
-
 ##### MULTILINEAR REGRESSION ----
 
-# Create a formula to express childHeight as a function of midparentHeight: fmla and print it.
+# Step 1: State hypothesis
+# Parent's height and gender are potentially a predictor for predicting the childHeight
+# H0: parent's height coefficient and gender are 0, which means that they are not a factor for determining childHeight
+# Ha: parent's height coefficient and gender are not 0, which means that they are  a factor for determining childHeight
+
 # Create a formula to express childHeight as a function of midparentHeight: fmla and print it.
 (fmla <- childHeight ~ midparentHeight + gender)
 
 # Use lm() to build a model height_model from df_height_train that predicts the child's height from the parent's mid height 
 height_model <- lm(fmla, data = df_train)
 
+##### VISUALIZE THE MODEL ----
+par(mfrow = c(2,2))
+plot(height_model)
+
+# INTERPRETATION:
+# 1. the residuals appear to be scattered somewhat randomly around the zero line, but there might be a slight curve. 
+# This suggests that the model might not be perfect, but it could be a reasonable fit for the data.
+
+# 2. the points deviate from the line somewhat, which suggests that the errors may not be perfectly normal.
+
+# 3. There doesn't seem to be a clear pattern between the residuals and the leverage scores, suggesting that there aren't 
+# any outliers with high leverage that are exerting undue influence on the model.
+
+# 4. There doesn't seem to be a clear pattern between the residuals and the leverage scores, suggesting that
+# there aren't any outliers with high leverage that are exerting undue influence on the model.
+
+library(performance)
+
+# Performance package:
+performance::check_model(height_model)
+
+# INTERPRETATION:
+# 1. 
+
+# 2.
+
+# 3. 
+
+# 4. 
+
+# 5.
+
+# 6.
+
+#### INTERPRET THE MODEL ----
+
 # Use summary() to examine the model
 summary(height_model)
 
 # INTERPRETATION:
+# Coefficients:
+# This shows the least-squares estimates for the fitted line
+# If midparentHeight is 0, and gendermale is 0, then the predicted childHeight is the intercept, 15.0436
+# The midparentHeight coeff means that if midparentHeight increases by 1 inch, all else being equal,
+# then the childHeight is predicted to increase by 0.7080 inches
+# The gendermale coeff means that if gender of the child is male, all else being equal,
+# then the childHeight is predicted to increase by 5.2855 inches
 
+# Std. Error and t-value are provided to show how the p-values were calculated:
+# std. error = sqrt of variance, typical variation of the coefficient
+# t-stat = coefficient / std. error, higher t-stat in magnitude is more stat sig 
+# (+ or just shows directly or inversely related)
+# p-value is derived from the t-distribution 
+# In the t-dist, H0 is that B1 = 0, coefficient does not explain dependent variable
+# What is the probability of getting a value of more than the t-value = 30.365? It's < 2e-16
+# There is 2e-16 * 100 chance of us getting a sample as extreme as we did for coeff of 5.2855 (too low)
+# Inferring that the coefficient for gendermale is indeed non-0, and can explain childHeight
 
-#### Evaluate model using Holdout Validation ----
+# p-value: We want this to be less than 0.05 to reject the null hypothesis that states that the independent variable is not significant
+# A significant p-value for midparentHeight and gendermale mean that it will give us a reliable guess of childHeight
+
+# Residual standard error: The sqrt of the denominator in the equation for F
+# Multiple R-squared: midparentHeight can explain 12.29% of the variation in childHeight
+# Adjusted R-squared: the R-suqared scaled by the number or parameters in the model
+# F-statistic: Tells if R-squared is significant or not.
+# F = 571.2
+# Degrees of Freedom: 1 and 651
+# p-value: < 2.2e-16, reject null hypothesis, line explains the observations
+
+#### EVALUATE THE MODEL ----
 
 # Manual prediction
 childHeight_pred <- 18.09189 + 0.70359 * 69.020
@@ -449,37 +517,3 @@ cat("R-squared (CV):", mean(cv_rsq), "\n")
 # When the R-squared is higher in holdout validation than in cross-validation, 
 # it could be a sign of overfitting, and further steps such as regularization or 
 # simplifying the model may be necessary to improve generalization performance.
-
-##### VISUALIZE THE MODEL ----
-par(mfrow = c(2,2))
-plot(height_model)
-
-# INTERPRETATION:
-# 1. the residuals appear to be scattered somewhat randomly around the zero line, but there might be a slight curve. 
-# This suggests that the model might not be perfect, but it could be a reasonable fit for the data.
-
-# 2. the points deviate from the line somewhat, which suggests that the errors may not be perfectly normal.
-
-# 3. There doesn't seem to be a clear pattern between the residuals and the leverage scores, suggesting that there aren't 
-# any outliers with high leverage that are exerting undue influence on the model.
-
-# 4. There doesn't seem to be a clear pattern between the residuals and the leverage scores, suggesting that
-# there aren't any outliers with high leverage that are exerting undue influence on the model.
-
-library(performance)
-
-# Performance package:
-performance::check_model(height_model)
-
-# INTERPRETATION:
-# 1. 
-
-# 2.
-
-# 3. 
-
-# 4. 
-
-# 5.
-
-# 6.
